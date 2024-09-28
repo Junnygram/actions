@@ -1,18 +1,29 @@
-name: Build
+name: Docker Image CI/CD
 
+# Trigger the workflow on push to the 'main' branch
 on:
   push:
-    branches: ['main']
+    branches:
+      - main
 
+# Define the jobs that will run
 jobs:
-  deploy:
+  build_and_push:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - run: docker build . -t junny27/actions
+      # Log in to Docker Hub using secrets
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - run: echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+      # Build the Docker image
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/actions:latest .
 
-      - run: docker push junny27/githubactions:latest
+      # Push the Docker image to Docker Hub
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/actions:latest
