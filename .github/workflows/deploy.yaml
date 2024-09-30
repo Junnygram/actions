@@ -1,0 +1,70 @@
+name: Deploy to Kubernetes on AWS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  create-cluster:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Configure AWS CLI and authenticate with AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Install eksctl to create the EKS cluster
+      - name: Install eksctl
+        run: |
+          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+          sudo mv /tmp/eksctl /usr/local/bin
+
+      # Create the EKS cluster
+      - name: Create EKS cluster
+        run: |
+          eksctl create cluster \
+            --name your-cluster-name \
+            --region ${{ secrets.AWS_REGION }} \
+            --fargate \
+            --without-nodegroup
+
+  deploy:
+    needs: create-cluster
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Install kubectl
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x ./kubectl
+          sudo mv ./kubectl /usr/local/bin/kubectl
+
+      # Update kubeconfig to use AWS EKS
+      - name: Update kubeconfig for AWS EKS
+        run: |
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name your-cluster-name
+
+      # Pull the Docker image based on the commit SHA
+      - name: Pull Docker image
+        run: |
+          COMMIT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/actions:${COMMIT_SHA}
+
+      # Deploy to Kubernetes on AWS EKS
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/actions actions=${{ secrets.DOCKERHUB_USERNAME }}/actions:${COMMIT_SHA}
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
