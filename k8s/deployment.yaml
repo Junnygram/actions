@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextjs-app-deployment
+  labels:
+    app: actions
+spec:
+  replicas: 2 # You can adjust the number of replicas
+  selector:
+    matchLabels:
+      app: actions
+  template:
+    metadata:
+      labels:
+        app: actions
+    spec:
+      containers:
+        - name: actions
+          image: ${{ secrets.DOCKERHUB_USERNAME }}/actions:${COMMIT_SHA}
+          ports:
+            - containerPort: 3000 # Default port for Next.js apps
+          env:
+            - name: NODE_ENV
+              value: 'production' # Set environment variables if needed
