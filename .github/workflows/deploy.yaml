@@ -31,8 +31,8 @@ jobs:
       - name: Create EKS cluster
         run: |
           eksctl create cluster \
-            --name your-cluster-name \
-            --region ${{ secrets.AWS_REGION }} \
+            --name nextjsactions \
+            --region ${{ secrets.AWS_SECRETS_REGION }} \
             --fargate \
             --without-nodegroup
 
@@ -54,7 +54,7 @@ jobs:
       # Update kubeconfig to use AWS EKS
       - name: Update kubeconfig for AWS EKS
         run: |
-          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name your-cluster-name
+          aws eks update-kubeconfig --region ${{ secrets.AWS_SECRETS_REGION }} --name nextjsactions
 
       # Pull the Docker image based on the commit SHA
       - name: Pull Docker image
